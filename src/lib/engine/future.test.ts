@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { defaultAssume, moneyState, runsOut, savingsPath, savingsWords } from "./future.ts";
+import { defaultAssume, MONTHS, moneyState, runsOut, savingsPath, savingsWords } from "./future.ts";
 
 const { a } = defaultAssume({}, true);
 
@@ -36,4 +36,11 @@ test("F05: money state is decided in code per life", () => {
   assert.equal(moneyState(savingsPath(a, 0)).level, "comfortable");
   assert.equal(moneyState(savingsPath(a, -15)).level, "tight");
   assert.equal(moneyState(savingsPath(a, -15, "prices")).level, "short");
+});
+
+test("F06: a life with higher costs saves less, a cheaper one more; no change keeps the old path", () => {
+  const same = savingsPath(a, 0);
+  assert.deepEqual(savingsPath(a, 0, "none", MONTHS, 0), same);
+  assert.ok(savingsPath(a, 0, "none", MONTHS, 20)[MONTHS] < same[MONTHS]);
+  assert.ok(savingsPath(a, 0, "none", MONTHS, -20)[MONTHS] > same[MONTHS]);
 });

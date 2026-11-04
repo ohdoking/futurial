@@ -20,6 +20,9 @@ type Reflect = { line: string; asLongAs?: string; check: { optionId: string; cru
 type EvOut = { kind: Evidence["kind"]; count: { yes: number; no?: number; unclear?: number; n: number } | null; facts: (Fact & { quote: string })[]; unclear: string | null };
 type See = { line: string; followUp: { title: string; why: string } };
 
+/** How money differs in one life from today: the user's pay and the household's costs, in percent. */
+type LifeMoney = { pay: number; cost: number; src: Source };
+
 type St = {
   screen: Screen; dilemma: string; demo: Record<string, string>; demoProfile: string | null; sampleLog: string | null;
   u: Understand | null; answers: Record<string, string>; conf: Record<string, Confidence | null>;
@@ -35,7 +38,7 @@ type St = {
   words: string[]; standing: Record<string, { guess: string; basis: string; well?: string; badly?: string; headline?: string; gained?: string; gaveUp?: string; hard?: string }>;
   /** Which life's hard part the user said they could live with. */
   hard: string | null;
-  five: { a: Assume; src: Record<keyof Assume, Source>; whatIf: WhatIf } | null;
+  five: { a: Assume; src: Record<keyof Assume, Source>; whatIf: WhatIf; life?: Record<string, LifeMoney> } | null;
 };
 
 const INITIAL: St = {
@@ -67,28 +70,40 @@ const SLIDERS: { k: keyof Assume; label: string; min: number; max: number; step:
   { k: "infl", label: "Prices rise", min: 0, max: 8, step: 1, unit: (v) => `${v}% a year` },
 ];
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
-/** Two savings lines over five years, computed in code. Solid A, dashed B, a dot where savings run out. */
+const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+/** Where each life's money starts: the pay change the user stated for that option, everything else as today. */
+const startMoney = (u: Understand, optId: string): LifeMoney =>
+  u.numbers?.payChange?.optionId === optId ? { pay: u.numbers.payChange.pct, cost: 0, src: "you" } : { pay: 0, cost: 0, src: "assumption" };
+/** Two savings lines over five years, computed in code. Solid A, dashed B. Savings never draw below zero: a life that runs out
+ *  stays on the zero line from that month (a ring marks it, and its end label says when). A scale on the left and each line's value at the right edge. */
 function SavingsChart({ lines }: { lines: { id: string; path: number[] }[] }) {
-  const W = 320, H = 130, P = 22;
-  const all = lines.flatMap((l) => l.path);
-  const lo = Math.min(0, ...all), hi = Math.max(1, ...all);
-  const x = (t: number) => P + (t / MONTHS) * (W - P - 6);
-  const y = (v: number) => 8 + (1 - (v - lo) / (hi - lo)) * (H - 30);
+  const W = 320, H = 176, L = 30, R = 58, T = 24, B = 24;
+  const hi = Math.max(3, ...lines.flatMap((l) => l.path));
+  const step = hi > 40 ? 20 : hi > 20 ? 10 : hi > 8 ? 4 : 2;
+  const top = Math.ceil(hi / step) * step;
+  const x = (t: number) => L + (t / MONTHS) * (W - L - R);
+  const y = (v: number) => T + (1 - Math.max(0, v) / top) * (H - T - B);
+  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step).filter((v, i, a) => a.length <= 5 || i % 2 === 0 || v === top);
+  // End labels: at each line's last value, pushed apart so they never overlap or leave the plot.
+  const ends = lines.map((l, i) => ({ i, id: l.id, v: l.path[MONTHS], out: runsOut(l.path), y: y(l.path[MONTHS]) })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 13) ends[k].y = ends[k - 1].y + 13;
+  const over = ends.length ? Math.max(0, ends[ends.length - 1].y - (H - B)) : 0;
+  ends.forEach((e) => { e.y = Math.max(T + 4, e.y - over); });
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Savings over five years in each life">
-      <line x1={P} x2={W - 6} y1={y(0)} y2={y(0)} className="zero" />
-      {[1, 2, 3, 4, 5].map((yr) => <text key={yr} x={x(yr * 12)} y={H - 6} textAnchor="middle">Y{yr}</text>)}
-      <text x={2} y={y(0) + 4}>0</text>
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Savings over five years: ${lines.map((l) => `${l.id} ends at ${Math.max(0, Math.round(l.path[MONTHS]))} months of costs`).join(", ")}`}>
+      {ticks.map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className={v === 0 ? "zero" : "grid"} /><text x={L - 6} y={y(v) + 3.5} textAnchor="end">{v}</text></g>)}
+      <text x={L - 6} y={T - 12} textAnchor="end" className="unit">mo</text>
+      {[1, 2, 3, 4, 5].map((yr) => <text key={yr} x={x(yr * 12)} y={H - 7} textAnchor="middle">Y{yr}</text>)}
       {lines.map((l, i) => {
         const out = runsOut(l.path);
         return (
           <g key={l.id} className={`ln l${i}`}>
             <polyline points={l.path.map((v, t) => `${x(t).toFixed(1)},${y(v).toFixed(1)}`).join(" ")} />
-            <text x={W - 6} y={y(l.path[MONTHS]) - 4} textAnchor="end">{l.id}</text>
             {out != null && <circle cx={x(out)} cy={y(0)} r={4} className="out" />}
           </g>
         );
       })}
+      {ends.map((e) => <text key={e.id} x={W - R + 6} y={e.y + 4} className={`end l${e.i}`}>{e.id} {e.out != null ? `out Y${Math.ceil(e.out / 12)}` : `${Math.round(e.v)} mo`}</text>)}
     </svg>
   );
 }
@@ -252,7 +267,7 @@ export default function Futurial() {
       const r = await api<Understand>("understand", { dilemma: s.dilemma, profile });
       if (r.handoff) { set({ busy: null }); return go("crisis"); }
       const u: Understand = { question: r.question, options: r.options, cruxes: r.cruxes, numbers: r.numbers ?? null, missing: r.missing ?? null, questions: r.questions ?? [] };
-      const five = { ...defaultAssume(u.numbers ?? {}, !!profile?.household.includes("Partner")), whatIf: "none" as WhatIf };
+      const five = { ...defaultAssume(u.numbers ?? {}, !!profile?.household.includes("Partner")), whatIf: "none" as WhatIf, life: Object.fromEntries(u.options.map((o) => [o.id, startMoney(u, o.id)])) };
       set({ ...INITIAL, dilemma: s.dilemma, words: s.words, demoProfile: s.demoProfile, sampleLog: s.sampleLog, answers: { ...(s.answers.forName ? { forName: s.answers.forName } : {}), ...recordedAnswers(u) }, demo: r.demo ? { understand: r.reason || "" } : {}, u, five, conf: Object.fromEntries(u.cruxes.map((c) => [c.id, null])), busy: null });
       setScenes({});
       // In the background: a photo of each future (Muse Image) and extra practice tests (Muse Wonder).
@@ -299,10 +314,14 @@ export default function Futurial() {
   }
 
   /** Savings path of one life, five years out, from the current numbers. */
+  /** Pay and costs in one life, as the user set them (or as they said in their decision). */
+  const moneyOf = (optId: string): LifeMoney => s.five?.life?.[optId] ?? (s.u ? startMoney(s.u, optId) : { pay: 0, cost: 0, src: "assumption" });
   const pathOf = (optId: string) => {
-    const pc = s.u?.numbers?.payChange;
-    return s.five ? savingsPath(s.five.a, pc?.optionId === optId ? pc.pct : 0, s.five.whatIf) : [];
+    const m = moneyOf(optId);
+    return s.five ? savingsPath(s.five.a, m.pay, s.five.whatIf, MONTHS, m.cost) : [];
   };
+  /** "pay -15% · costs +20%" for one life, only the parts that differ from today. */
+  const moneyNote = (optId: string) => { const m = moneyOf(optId); return [m.pay ? `pay ${signed(m.pay)}%` : "", m.cost ? `costs ${signed(m.cost)}%` : ""].filter(Boolean).join(" · "); };
   /** Kids' ages today and five years out, with names when given in the same order. */
   const kidsLine = () => {
     const ages = s.u?.numbers?.kidsAges;
@@ -327,9 +346,9 @@ export default function Futurial() {
   function laterFacts(): string[] {
     if (!s.u || !s.five) return [];
     const out = dayOpts.map((o) => {
-      const pc = s.u!.numbers?.payChange;
+      const m = moneyOf(o.id);
       const p = pathOf(o.id);
-      return `In ${o.id} · ${o.label}: ${savingsWords(p, s.u!.numbers?.monthlyCostUsd)}${pc?.optionId === o.id ? ` (your pay ${pc.pct > 0 ? "+" : ""}${pc.pct}% from the start, then yearly raises)` : ""}; ${moneyState(p).fact}`;
+      return `In ${o.id} · ${o.label}: ${savingsWords(p, s.u!.numbers?.monthlyCostUsd)}${m.pay ? ` (your pay ${signed(m.pay)}% from the start, then yearly raises)` : ""}${m.cost ? ` (living costs ${signed(m.cost)}% compared with today)` : ""}; ${moneyState(p).fact}`;
     });
     const k = kidsLine();
     if (k) out.push(`In both lives, ${k.said} (five years older than today)`);
@@ -569,7 +588,9 @@ export default function Futurial() {
   }
 
   else if (s.screen === "five" && s.five) {
-    const f = s.five; const pc = s.u.numbers?.payChange; const k = kidsLine();
+    const f = s.five; const k = kidsLine();
+    const setLife = (id: string, key: "pay" | "cost", v: number) => set((p) => ({ five: { ...p.five!, life: { ...(p.five!.life ?? {}), [id]: { ...moneyOf(id), [key]: v, src: "you" } } } }));
+    const sameMoney = dayOpts.every((o) => !moneyOf(o.id).pay && !moneyOf(o.id).cost);
     const setA = (key: keyof Assume, v: number) => set((p) => ({ five: { ...p.five!, a: { ...p.five!.a, [key]: v }, src: { ...p.five!.src, [key]: "you" } } }));
     const hasPartner = !!profile?.household.includes("Partner");
     body = (
@@ -586,8 +607,21 @@ export default function Futurial() {
           <SavingsChart lines={dayOpts.map((o) => ({ id: o.id, path: pathOf(o.id) }))} />
           {dayOpts.map((o) => {
             const p = pathOf(o.id);
-            return <span key={o.id} className="feelnote"><b>{o.id} · {o.label}</b>: {cap(savingsWords(p, s.u!.numbers?.monthlyCostUsd))}{runsOut(p) == null ? " in year 5" : ""}{pc?.optionId === o.id ? ` · pay ${pc.pct > 0 ? "+" : ""}${pc.pct}% (from you)` : ""}</span>;
+            return <span key={o.id} className="feelnote"><b>{o.id} · {o.label}</b>: {cap(savingsWords(p, s.u!.numbers?.monthlyCostUsd))}{runsOut(p) == null ? " in year 5" : ""}{moneyNote(o.id) ? ` · ${moneyNote(o.id)}` : ""}</span>;
           })}
+          {sameMoney && <p className="sub">Both lives have the same money right now. If one life changes your pay or your living costs (a move, a new city), set it below.</p>}
+          <div className="lives-money">
+            {dayOpts.map((o, i) => {
+              const m = moneyOf(o.id);
+              return (
+                <div key={o.id} className={`lm l${i}`}>
+                  <span className="k">{o.id} · {o.label} <span className={`src ${m.src}`}>{m.src !== "you" && !m.pay && !m.cost ? "same as today" : SRC_TAG[m.src]}</span></span>
+                  <label className="slider"><span>Your pay vs. today: <b>{signed(m.pay)}%</b></span><input type="range" min={-60} max={100} step={5} value={m.pay} onChange={(e) => setLife(o.id, "pay", Number(e.target.value))} /></label>
+                  <label className="slider"><span>Living costs vs. today: <b>{signed(m.cost)}%</b></span><input type="range" min={-50} max={100} step={5} value={m.cost} onChange={(e) => setLife(o.id, "cost", Number(e.target.value))} /></label>
+                </div>
+              );
+            })}
+          </div>
           <span className="fine">Counted in months of today&apos;s costs. Code works it out from your numbers and the guesses below; the AI only puts it into words.</span>
         </div>
         <details className="box">
@@ -670,10 +704,10 @@ export default function Futurial() {
             // Everything the user gave goes into both lives: show it once, before the first one plays.
             <div className="built">
               <span className="k">Built from what you told it</span>
-              <div className="tags">{[...wordList.map((w) => `“${w}”`), ...answerList.map((x) => x.answer), profile?.place, s.u?.numbers?.payChange ? `pay ${s.u.numbers.payChange.pct}%` : null].filter(Boolean).map((x) => <span key={x!}>{x}</span>)}</div>
+              <div className="tags">{[...wordList.map((w) => `“${w}”`), ...answerList.map((x) => x.answer), profile?.place, ...dayOpts.map((x) => moneyOf(x.id).src === "you" && moneyNote(x.id) ? `${x.id}: ${moneyNote(x.id)}` : null)].filter(Boolean).map((x) => <span key={x!}>{x}</span>)}</div>
             </div>
           )}
-          {s.five && <p className="cond"><span className="src">computed</span> {savingsWords(pathOf(o.id), s.u?.numbers?.monthlyCostUsd)}{s.u?.numbers?.payChange?.optionId === o.id ? ` · pay ${s.u.numbers.payChange.pct}%` : ""}{kidsLine() ? ` · ${kidsLine()!.said}` : ""}</p>}
+          {s.five && <p className="cond"><span className="src">computed</span> {savingsWords(pathOf(o.id), s.u?.numbers?.monthlyCostUsd)}{moneyNote(o.id) ? ` · ${moneyNote(o.id)}` : ""}{kidsLine() ? ` · ${kidsLine()!.said}` : ""}</p>}
           <span className="fine">Hypothetical. A guess, not a prediction.</span>
           <span className="credit">Muse Wonder wrote both lives in one pass · Muse Image drew each scene · money computed in code</span>
           <button className="cta" onClick={next}>Live it</button>

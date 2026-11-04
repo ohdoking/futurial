@@ -8,6 +8,8 @@ Futurial lets you **live five years ahead in both futures before you choose**, t
 
 Built for the **Meta Global AI Developer Hackathon** (theme: *Build for Your World*) with **Muse Spark**, **Muse Wonder**, and **Muse Image**.
 
+**Try it live with your own decision:** [futurial.vercel.app](https://futurial.vercel.app/). Every step runs on the live models (writing both lives takes about 30 seconds). Short on time? Start from the demo user's decision: [futurial.vercel.app/?demo=sarah](https://futurial.vercel.app/?demo=sarah).
+
 ---
 
 ## What it does

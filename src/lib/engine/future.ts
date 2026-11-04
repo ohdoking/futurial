@@ -17,8 +17,8 @@ export const WHAT_IFS: { id: Exclude<WhatIf, "none">; label: string; fact: strin
 ];
 export const MONTHS = 60;
 
-/** Savings at the end of each month 0..months, in months of today's costs. payChangePct applies to the user's own pay. */
-export function savingsPath(a: Assume, payChangePct: number, whatIf: WhatIf = "none", months = MONTHS): number[] {
+/** Savings at the end of each month 0..months, in months of today's costs. payChangePct applies to the user's own pay; costChangePct to the household's costs in that life (a move, a cheaper city). */
+export function savingsPath(a: Assume, payChangePct: number, whatIf: WhatIf = "none", months = MONTHS, costChangePct = 0): number[] {
   const infl = whatIf === "prices" ? 6 : a.infl;
   const out = [a.savingsMonths];
   let s = a.savingsMonths;
@@ -27,7 +27,7 @@ export function savingsPath(a: Assume, payChangePct: number, whatIf: WhatIf = "n
     const pay = (a.share / 100) * (1 + payChangePct / 100) + (1 - a.share / 100);
     let income = (a.cover / 100) * pay * (1 + a.raise / 100) ** year;
     if (whatIf === "halfIncome" && t >= 7 && t <= 9) income /= 2;
-    const cost = (1 + infl / 100) ** (t / 12) + (whatIf === "bill" && t === 7 ? 1 : 0);
+    const cost = (1 + costChangePct / 100) * (1 + infl / 100) ** (t / 12) + (whatIf === "bill" && t === 7 ? 1 : 0);
     s += income - cost;
     out.push(s);
   }
