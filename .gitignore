@@ -49,3 +49,4 @@ next-env.d.ts
 
 # local API cache and usage log
 /.cache
+/e2e/captures
