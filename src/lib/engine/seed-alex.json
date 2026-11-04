@@ -1,0 +1,103 @@
+{
+  "id": "alex-quit-to-build",
+  "question": "Quit to build?",
+  "dilemma": "I'm thinking about quitting my PM job to build an AI tool that chases late invoices for freelancers. I have about 9 months of savings, but I'm scared of giving up a steady paycheck.",
+  "createdAt": "2026-11-02",
+  "deadline": null,
+  "options": [
+    { "id": "A", "label": "Quit and build" },
+    { "id": "B", "label": "Keep job, build on the side" }
+  ],
+  "cruxes": [
+    { "id": "pay", "statement": "Most freelancers would pay $15 a month", "optionIds": ["A", "B"], "kind": "fact", "impact": "high", "confidence": 3 },
+    { "id": "income", "statement": "I can live on an unstable income", "optionIds": ["A"], "kind": "fact", "impact": "high", "confidence": 2 },
+    { "id": "hours", "statement": "I can make real progress in 10 hours a week", "optionIds": ["B"], "kind": "fact", "impact": "high", "confidence": 2 },
+    { "id": "values", "statement": "Freedom matters more to me than a steady paycheck", "optionIds": ["A", "B"], "kind": "preference", "impact": "medium", "confidence": null }
+  ],
+  "experiments": [
+    {
+      "id": "A1", "optionId": "A", "cruxIds": ["pay"], "level": 1,
+      "title": "Ask 5 freelancers to pay $15 a month",
+      "steps": ["Message 5 freelancers you know or find in communities", "Ask how they handle late invoices today", "Show the one-line pitch and the $15 price", "Ask: \"Would you pay for this next month?\""],
+      "durationDays": 3, "costUsd": 0, "reversible": true, "risk": "low", "riskFlags": [],
+      "sensitivity": "high", "sensitivityReason": "If most say no, quitting to build this would be a guess.",
+      "measure": { "type": "count", "n": 5, "question": "Would you pay for this next month?", "guess": 3, "threshold": 2, "thresholdTouched": false },
+      "scenario": null, "status": "done", "statusReason": null, "startedAt": "2026-11-02"
+    },
+    {
+      "id": "A2", "optionId": "A", "cruxIds": ["income"], "level": 2,
+      "title": "Live on 40% of your salary for a month",
+      "steps": ["Move 60% of each paycheck to savings on payday", "Track spending weekly", "Note the days you went over"],
+      "durationDays": 30, "costUsd": 0, "reversible": true, "risk": "low", "riskFlags": [],
+      "sensitivity": "medium", "sensitivityReason": "Shows whether a smaller income is livable before it's real.",
+      "measure": null, "scenario": null, "status": "candidate", "statusReason": null, "startedAt": null
+    },
+    {
+      "id": "A3", "optionId": "A", "cruxIds": ["values"], "level": 3,
+      "title": "Walk through a day in month 8",
+      "steps": [],
+      "durationDays": 0, "costUsd": 0, "reversible": true, "risk": "low", "riskFlags": [],
+      "sensitivity": "low", "sensitivityReason": "Shows what you care about, not what will happen.",
+      "measure": null,
+      "scenario": {
+        "label": "hypothetical",
+        "inputs": { "savingsMonths": 9, "rentUsd": 1800, "monthsIn": 8 },
+        "moments": [
+          { "time": "07:40", "text": "No alarm, no morning meeting. You open your laptop at the kitchen table. A few early customers. Not much income.", "choices": null },
+          { "time": "11:30", "text": "One of your first customers asks for a refund: \"My accounting app already sends reminders.\"", "choices": ["Refund, and ask what would make it worth paying for", "Offer a free month to keep them"] },
+          { "time": "16:00", "text": "Your old team posts a photo. The project you started is finished, without you.", "choices": null },
+          { "time": "21:30", "text": "You check your bank app. One month of savings left. Rent is due Friday.", "choices": null }
+        ]
+      },
+      "status": "done", "statusReason": null, "startedAt": "2026-11-02"
+    },
+    {
+      "id": "A4", "optionId": "A", "cruxIds": [], "level": 1,
+      "title": "Research startup failure rates",
+      "steps": [], "durationDays": 1, "costUsd": 0, "reversible": true, "risk": "low", "riskFlags": [],
+      "sensitivity": "none", "sensitivityReason": "General statistics don't say anything about this idea.",
+      "measure": null, "scenario": null, "status": "candidate", "statusReason": null, "startedAt": null
+    },
+    {
+      "id": "A5", "optionId": "A", "cruxIds": ["income"], "level": 1,
+      "title": "Quit for a month to see how it feels",
+      "steps": [], "durationDays": 30, "costUsd": 0, "reversible": false, "risk": "high", "riskFlags": ["financial"],
+      "sensitivity": "high", "sensitivityReason": "Would answer the question, but can't be undone.",
+      "measure": null, "scenario": null, "status": "candidate", "statusReason": null, "startedAt": null
+    },
+    {
+      "id": "B1", "optionId": "B", "cruxIds": ["hours", "pay"], "level": 1,
+      "title": "Keep your job and chase invoices by hand for 3 freelancers for two weeks",
+      "steps": ["Find 3 freelancers with an overdue invoice", "Send reminders for them for two weeks", "Track hours spent and whether they'd pay to keep it going"],
+      "durationDays": 14, "costUsd": 0, "reversible": true, "risk": "low", "riskFlags": [],
+      "sensitivity": "high", "sensitivityReason": "Tests Path B, which has no evidence yet, and whether people will pay for help.",
+      "measure": { "type": "count", "n": 3, "question": "Would you pay to keep this going?", "guess": null, "threshold": null, "thresholdTouched": false },
+      "scenario": null, "status": "candidate", "statusReason": null, "startedAt": null
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev1", "experimentId": "A1", "loggedAt": "2026-11-05", "kind": "external_fact", "source": "voice",
+      "transcript": "Four of them hate chasing invoices, but only one would actually pay. Two said their accounting app already sends reminders.",
+      "count": { "yes": 1, "n": 5 },
+      "facts": [
+        { "label": "Would pay", "value": 1, "of": 5 },
+        { "label": "Feel the pain", "value": 4, "of": 5 },
+        { "label": "Use a free fix", "value": 2, "of": 5 }
+      ],
+      "reactions": [], "isDemo": true
+    },
+    {
+      "id": "ev2", "experimentId": "A3", "loggedAt": "2026-11-02", "kind": "simulated_reaction", "source": "scenario",
+      "transcript": null, "count": null, "facts": [],
+      "reactions": [
+        { "momentIndex": 0, "feeling": "Energized", "choice": null },
+        { "momentIndex": 1, "feeling": "Calm", "choice": 0 },
+        { "momentIndex": 2, "feeling": "Anxious", "choice": null },
+        { "momentIndex": 3, "feeling": "Anxious", "choice": null }
+      ],
+      "isDemo": true
+    }
+  ],
+  "beliefUpdates": []
+}

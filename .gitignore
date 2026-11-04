@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# e2e output
+/e2e/report
+/e2e/screens
+/test-results
+/evals
+
+# local API cache and usage log
+/.cache

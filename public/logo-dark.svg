@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Futurial">
+<title>Futurial</title>
+<g transform="translate(-4 0)">
+  <mask id="fm" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240"><rect width="240" height="240" fill="#fff"/><g fill="#000"><circle cx="84" cy="84" r="4"/><circle cx="101" cy="84" r="4"/><circle cx="118" cy="84" r="4"/><circle cx="135" cy="84" r="4"/><circle cx="152" cy="84" r="4"/></g><path d="M169 40V78" stroke="#000" stroke-width="16" stroke-linecap="round"/></mask>
+  <g mask="url(#fm)" fill="none" stroke="#6FB7CB" stroke-width="32" stroke-linecap="round"><path d="M66 190V109A25 25 0 0 1 91 84H174"/><path d="M66 135H149"/></g>
+  <path d="M169 40V78" stroke="#F0A940" stroke-width="8" stroke-linecap="round"/>
+  <path d="M172 38L196 49L172 60Z" fill="#F0A940" stroke="#F0A940" stroke-width="4" stroke-linejoin="round"/>
+</g>
+</svg>
