@@ -286,7 +286,8 @@ details.odds p { margin-top: 8px; font-size: 14.5px; }
 .titlecard .standing b { color: var(--ink); font-weight: 600; }
 .film { display: flex; flex-direction: column; gap: 14px; margin: -22px -18px 0; }
 .film .frame { position: relative; height: 56vh; min-height: 300px; overflow: hidden; background: #000; }
-.film .frame img { width: 100%; height: 100%; object-fit: cover; display: block; animation: kenburns 14s ease-out both; }
+.film .frame img { width: 100%; height: 100%; object-fit: cover; display: block; animation: kenburns 14s ease-out both, imgIn .9s ease both; }
+@keyframes imgIn { from { opacity: 0; } to { opacity: 1; } }
 .film .frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.55) 0%, transparent 25%, transparent 55%, var(--surface) 100%); pointer-events: none; }
 .film .frame .blank { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .film .when { position: absolute; top: 18px; left: 18px; z-index: 2; font-family: var(--font-mono); font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: #f4efe6; }
@@ -343,3 +344,12 @@ details.odds p { margin-top: 8px; font-size: 14.5px; }
 .titlecard .built .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .titlecard .built .tags span { font-size: 13px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); }
 .titlecard .credit { font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--muted); }
+/* A scene whose picture is still coming (or never came): warm film tones, not a black box. */
+.film .filmdev { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 50% 38%, #4a3822 0%, #24201b 45%, #0d0f12 100%); user-select: none; }
+.film .filmdev.on { animation: devBreath 3.2s ease-in-out infinite; }
+.film .filmdev.on::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(244, 239, 230, .08) 50%, transparent 65%); background-size: 220% 100%; animation: sheen 2.4s linear infinite; }
+.film .devlabel { position: absolute; left: 0; right: 0; top: 42%; display: flex; justify-content: center; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(244, 239, 230, .55); }
+.film .devlabel i { width: 6px; height: 6px; border-radius: 50%; background: #e7a53c; animation: devDot 1.2s ease-in-out infinite; }
+@keyframes devBreath { 50% { filter: brightness(1.25); } }
+@keyframes devDot { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .film .filmdev.on, .film .filmdev.on::before, .film .devlabel i { animation: none; } }

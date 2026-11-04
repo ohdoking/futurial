@@ -710,7 +710,13 @@ export default function Futurial() {
           <div className="frame">
             <span className="reel" aria-label={`Life ${opt.id}, scene ${m + 1} of 3`}>{[0, 1, 2].map((j) => <i key={j} className={j <= m ? "on" : ""} />)}</span>
             <span className="when">{mo!.time}</span><span className="beat">{BEATS[m] ?? ""}</span>
-            {scenes[k] && scenes[k] !== SKIPPED ? <img src={scenes[k]!} alt="" /> : <span className="blank">{scenes[k] === SKIPPED ? "Picture skipped in test" : scenes[k] === null ? "" : "Developing…"}</span>}
+            {scenes[k] && scenes[k] !== SKIPPED ? <img src={scenes[k]!} alt="" /> : (
+              // No picture yet: a warm, slowly developing frame instead of a black box. If it never comes, the frame just stays warm.
+              <div className={`filmdev${scenes[k] === undefined ? " on" : ""}`} aria-hidden="true">
+                {scenes[k] === undefined && <span className="devlabel"><i />Developing the picture</span>}
+                {scenes[k] === SKIPPED && <span className="devlabel">Picture skipped in test</span>}
+              </div>
+            )}
           </div>
           <div className="subs">
             {chose == null ? <>

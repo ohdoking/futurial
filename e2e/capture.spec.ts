@@ -84,7 +84,7 @@ for (const name of picked) {
       for (let m = 0; m < 3; m++) {
         if (!(await page.locator(".film").count())) break; // a recording shows only the first life's fear scene
         if (m === 2) await expect(page.locator(".film .frame img")).toBeVisible({ timeout: 90_000 }).catch(() => {});
-        else await page.locator(".film .frame img, .film .frame .blank:not(:has-text('Developing'))").first().waitFor({ timeout: 90_000 }).catch(() => {});
+        else await page.locator(".film .frame img, .film .filmdev:not(.on)").first().waitFor({ timeout: 90_000 }).catch(() => {});
         await page.waitForTimeout(6000); // let the subtitles finish
         await shot(`live-${life}${m + 1}`);
         if (await page.locator(".film .choices").count()) {
