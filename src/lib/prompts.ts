@@ -52,7 +52,7 @@ Return:
   "cruxes": [{ "id": string, "statement": string, "optionIds": string[], "kind": "fact" | "preference", "impact": "high" | "medium" | "low" }],
   "numbers": { "savingsMonths": number | null, "monthlyCostUsd": number | null, "payChange": { "optionId": string, "pct": number } | null, "kidsAges": number[] | null },
   "missing": string | null,
-  "questions": [{ "id": string, "question": string, "why": string, "options": string[] }]
+  "questions": [{ "id": string, "question": string, "why": string, "options": string[], "money": { "optionId": string, "kind": "pay" | "cost" } | null }]
 }
 
 Guidance:
@@ -63,7 +63,8 @@ Guidance:
 - "fact" = the world can answer it. "preference" = only the user can answer it (what matters more to them). Include one preference crux if the dilemma has one.
 - "numbers": only if the user stated them. Otherwise null. "payChange": the option whose pay differs from today and by how much, as the user said it ("pays about 15% less" → pct -15). "kidsAges": children's ages today, only if stated.
 - "missing": one short question if a key fact is missing, else null.
-- "questions": 0 to 3 short questions whose answers would most change how each future's day looks (how long savings last, who depends on them, what their work day is like, who they could ask). Skip anything the user already said or shared. Each: question ≤ 10 words, a complete grammatical question, "why" ≤ 10 words starting with "So" (e.g. "So money moments use your real numbers."), 2 to 4 short tap answers (≤ 4 words each, money always in US dollars ($)). Answer ranges must be realistic for the user's place and household (a family of four in Seoul spends well over $2,000 a month). Never ask what the user can't know yet (like the hours of a job they haven't started). Never ask about health, religion, politics, or identity.`;
+- "questions": 0 to 3 short questions whose answers would most change how each future's day looks (how long savings last, who depends on them, what their work day is like, who they could ask). Skip anything the user already said or shared. Each: question ≤ 10 words, a complete grammatical question, "why" ≤ 10 words starting with "So" (e.g. "So money moments use your real numbers."), 2 to 4 short tap answers (≤ 4 words each, money always in US dollars ($)). Answer ranges must be realistic for the user's place and household (a family of four in Seoul spends well over $2,000 a month). Never ask what the user can't know yet (like the hours of a job they haven't started). Never ask about health, religion, politics, or identity.
+- If the options differ in where the user would live or what they would earn (moving to another country or city, a new job or field) and the user didn't give numbers for it, one question asks how money would differ in the option that changes: its pay, or its living costs, whichever differs more (e.g. "Living costs in Korea, compared with Germany?"). Tap answers in words from lower to higher, e.g. "Much lower", "A bit lower", "About the same", "Higher". Set "money" to that option's id and "pay" or "cost". Every other question has "money": null.`;
 
 export const UnderstandOut = z.object({
   question: z.string().min(1),
@@ -77,7 +78,8 @@ export const UnderstandOut = z.object({
     payChange: z.object({ optionId: z.string(), pct: z.number() }).nullable(), kidsAges: z.array(z.number()).nullable(),
   }).partial().nullable().optional(),
   missing: z.string().nullable().optional(),
-  questions: z.array(z.object({ id: z.string(), question: z.string(), why: z.string(), options: z.array(z.string()).min(2).max(4) })).max(3).optional().default([]),
+  questions: z.array(z.object({ id: z.string(), question: z.string(), why: z.string(), options: z.array(z.string()).min(2).max(4),
+    money: z.object({ optionId: z.string(), kind: z.enum(["pay", "cost"]) }).nullable().optional().default(null) })).max(3).optional().default([]),
 });
 
 // ---------- P2 Practice plan (Muse Wonder) ----------

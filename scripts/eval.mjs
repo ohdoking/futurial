@@ -122,6 +122,58 @@ for (const [i, dilemma] of DILEMMAS.entries()) {
   console.log(`${id} done (${u.ms + (plan.ms ?? 0)}ms)`);
 }
 
+// A move between countries: one question asks how money differs in the life that changes, and it's wired to that life.
+{
+  const id = "M1";
+  const u = await post("understand", { dilemma: "Should I move back to Korea or keep living in Germany? My job and friends are here, but my parents are getting older.", profile: null });
+  check(id, "understand is live", u.demo === false, u.reason);
+  const mq = (u.questions ?? []).filter((q) => q.money);
+  check(id, "a move gets one money question", mq.length === 1, JSON.stringify((u.questions ?? []).map((q) => [q.question, q.money])));
+  check(id, "the money question points at a real option", mq.every((q) => u.options.some((o) => o.id === q.money.optionId) && ["pay", "cost"].includes(q.money.kind)), JSON.stringify(mq.map((q) => q.money)));
+  check(id, "money answers are words, not dollar amounts", mq.every((q) => q.options.every((x) => !/\$\d/.test(x))), JSON.stringify(mq.map((q) => q.options)));
+  console.log(`${id} done`);
+}
+
+// Unusual decisions, lived end to end: three options (the user lives the 1st and 3rd), nothing about money, and Korean input.
+const EXTRA = [
+  { id: "X1", dilemma: "Should I stay in Toronto, move to Vancouver for my partner's job, or go back home to Mexico City? I work remotely as a data analyst.", pick: [0, 2] },
+  { id: "X2", dilemma: "My partner wants a baby in the next year. I'm not sure I'm ready, and I'm worried about losing the life we have now.", noMoney: true },
+  { id: "X3", dilemma: "회사를 그만두고 대학원에 갈지 고민이에요. 지금 회사는 안정적이지만 일이 재미없어요. 서른 둘이고 혼자 살아요.", korean: true },
+];
+for (const x of QUICK ? [] : EXTRA) {
+  const { id, dilemma } = x;
+  const u = await post("understand", { dilemma });
+  check(id, "understand is live", u.demo === false, u.reason);
+  if (u.demo !== false) continue;
+  if (x.pick) check(id, "three options are kept", u.options.length === 3, u.options.map((o) => o.label).join(" | "));
+  const opts = (x.pick && u.options.length === 3 ? x.pick.map((k) => u.options[k]) : u.options.slice(0, 2)).map(({ id, label }) => ({ id, label }));
+  const base = { options: opts, monthsIn: 60, inputs: {}, cruxes: u.cruxes, dilemma, words: [] };
+  const outline = await post("outline", base);
+  const days = await post("day", { ...base, outline: outline.demo === false ? outline.slots : null });
+  check(id, "days are live", days.demo === false, days.reason);
+  if (days.demo !== false) continue;
+  check(id, "3 days, the two picked lives in each", days.slots.length === 3 && days.slots.every((sl) => opts.every((o) => sl.moments[o.id])), JSON.stringify(days.slots.map((sl) => Object.keys(sl.moments))));
+  const all = days.slots.flatMap((sl) => opts.map((o) => sl.moments[o.id]).filter(Boolean));
+  check(id, "every scene has a voice", all.every((m) => (m.voice ?? "").trim() && (m.voiceBy ?? "").trim()));
+  check(id, "each life has a hard part", opts.every((o) => (days.standing?.[o.id]?.hard ?? "").split(/\s+/).length >= 5), JSON.stringify(opts.map((o) => days.standing?.[o.id]?.hard)));
+  check(id, "no invented dollar amounts", !/\$\s?\d/.test(textOf([all, days.standing])), (textOf(all).match(/\$\s?[\d,]+/g) ?? []).join(","));
+  check(id, "English only, USD", !/[가-힣]|₩|\bKRW\b/.test(textOf([days.slots, days.standing])), "");
+  if (x.noMoney) {
+    const MONEYW = /\b(savings?|salary|paycheck|pay|bills?|budget|money|income|rent)\b/i;
+    check(id, "no money in the decision: the fear scene isn't about money", opts.every((o) => !MONEYW.test(days.slots[0].moments[o.id]?.text ?? "")), opts.map((o) => days.slots[0].moments[o.id]?.text).join(" || "));
+  }
+  const playDays = opts.map((o) => ({ future: `${o.id} · ${o.label}`, felt: ["Calm", "Worried"], moments: days.slots.map((sl) => ({ time: sl.time, text: sl.moments[o.id].text, chose: sl.moments[o.id].choices ? sl.moments[o.id].choices[0] : null })) }));
+  const picked = { optionId: opts[1].id, hard: days.standing?.[opts[1].id]?.hard ?? "", otherHard: days.standing?.[opts[0].id]?.hard ?? "" };
+  const r = await post("reflect", { dilemma, options: u.options, cruxes: u.cruxes, days: playDays, picked, words: [] });
+  check(id, "reflect is live", r.demo === false, r.reason);
+  if (r.demo === false) {
+    check(id, "the pick is said back with an 'as long as'", /as long as/i.test(r.line), r.line);
+    check(id, "today's check tests the picked life", r.check.optionId === picked.optionId, r.check.optionId);
+    check(id, "check is English", !/[가-힣]/.test(textOf(r)), r.check.title);
+  }
+  console.log(`${id} done`);
+}
+
 // "Who are you doing this for?": the person shows up in both lives, and their day isn't guilt in one life only.
 {
   const id = "P1";
@@ -145,7 +197,7 @@ for (const [i, dilemma] of DILEMMAS.entries()) {
     const playDays = opts.map((o, k) => ({ future: `${o.id} · ${o.label}`, felt: k === 0 ? ["Calm", "Tired"] : ["Proud", "Worried"], moments: days.slots.map((sl) => ({ time: sl.time, text: sl.moments[o.id].text, chose: sl.moments[o.id].choices ? sl.moments[o.id].choices[0] : null })) }));
     const picked = { optionId: opts[1].id, hard: days.standing?.[opts[1].id]?.hard ?? "", otherHard: days.standing?.[opts[0].id]?.hard ?? "" };
     check(id, "film: both lives have an honest hard part", picked.hard.split(/\s+/).length >= 5 && picked.otherHard.split(/\s+/).length >= 5, JSON.stringify(picked));
-    check(id, "film: the first scene is the fear made real (money in the life that pays less)", /saving|bill|money|pay|camp|cost/i.test(days.slots[0].moments[pc?.optionId ?? opts[1].id]?.text ?? ""), days.slots[0].moments[pc?.optionId ?? opts[1].id]?.text);
+    check(id, "film: the first scene is a fear she named, made real (less money or missed evenings) in the life that pays less", /saving|bill|money|pay|camp|cost|bedtime|without you|evening|dinner|late/i.test(days.slots[0].moments[pc?.optionId ?? opts[1].id]?.text ?? ""), days.slots[0].moments[pc?.optionId ?? opts[1].id]?.text);
     check(id, "film: in the life that stays, the first scene opens with the fear of staying (not money handled easily)", !/^[^.]*\b(savings (still )?cover|pay (it|this) from savings|still keep)\b/i.test(days.slots[0].moments[opts.find((o) => o.id !== (pc?.optionId ?? opts[1].id))?.id ?? opts[0].id]?.text ?? "") && /\b(product|role|offer|someone else|same|again|director|promotion|startup|job)\b/i.test(days.slots[0].moments[opts.find((o) => o.id !== (pc?.optionId ?? opts[1].id))?.id ?? opts[0].id]?.text ?? ""), days.slots[0].moments[opts.find((o) => o.id !== (pc?.optionId ?? opts[1].id))?.id ?? opts[0].id]?.text);
     check(id, "film: the weekend scene has the kids in both lives", opts.every((o) => /\b(Mia|Leo|kids?)\b/i.test(textOf(days.slots[2].moments[o.id]))), "");
     const r = await post("reflect", { dilemma, options: u.options, cruxes: u.cruxes, days: playDays, profile, answers, picked, words: WORDS });

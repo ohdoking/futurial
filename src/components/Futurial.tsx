@@ -12,7 +12,7 @@ import { Dictate, Loading, Photo, Receipt, Scale } from "./ui";
 type Screen = "profile" | "start" | "words" | "ask" | "five" | "live" | "today" | "plan" | "guess" | "home" | "log" | "confirm" | "reveal" | "still" | "next" | "crisis";
 type Opt = { id: string; label: string; scene: string };
 type Crux = { id: string; statement: string; optionIds: string[]; kind: "fact" | "preference"; impact: "high" | "medium" | "low" };
-type Question = { id: string; question: string; why: string; options: string[] };
+type Question = { id: string; question: string; why: string; options: string[]; money?: { optionId: string; kind: "pay" | "cost" } | null };
 type Understand = { question: string; options: Opt[]; cruxes: Crux[]; numbers?: { savingsMonths?: number | null; monthlyCostUsd?: number | null; payChange?: { optionId: string; pct: number } | null; kidsAges?: number[] | null } | null; missing?: string | null; questions?: Question[] };
 type DayM = { time: string; text: string; voice?: string | null; voiceBy?: string | null; words?: string[]; scene: string; choices: string[] | null; outcomes: string[] | null; contrast?: string };
 type Slot = { time: string; contrast: string; moments: Record<string, Omit<DayM, "time" | "contrast">> };
@@ -71,6 +71,19 @@ const SLIDERS: { k: keyof Assume; label: string; min: number; max: number; step:
 ];
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+/** A tapped answer about how pay or costs would differ ("A bit lower", "About 20% higher") as a percent change. Code decides
+ *  the size of words like "lower"; the user can move the slider afterwards. null when the answer doesn't say. */
+function answerPct(answer: string): number | null {
+  const a = answer.toLowerCase();
+  const n = a.match(/(\d+)\s*%/);
+  const down = /lower|less|cheaper|drop|cut/.test(a), up = /higher|more|expensive|raise/.test(a);
+  if (n) return (down ? -1 : 1) * Number(n[1]);
+  if (/same|similar|no change/.test(a)) return 0;
+  const big = /much|a lot|far/.test(a), small = /bit|slightly|little/.test(a);
+  if (down) return big ? -35 : small ? -10 : -20;
+  if (up) return big ? 35 : small ? 10 : 20;
+  return null;
+}
 /** Where each life's money starts: the pay change the user stated for that option, everything else as today. */
 const startMoney = (u: Understand, optId: string): LifeMoney =>
   u.numbers?.payChange?.optionId === optId ? { pay: u.numbers.payChange.pct, cost: 0, src: "you" } : { pay: 0, cost: 0, src: "assumption" };
@@ -341,6 +354,13 @@ export default function Futurial() {
       const v = nums.length > 1 ? Math.round((nums[0] + nums[1]) / 2) : /under|less/i.test(a) ? Math.max(1, nums[0] - 1) : /over|more/i.test(a) ? nums[0] + 2 : nums[0];
       set((p) => ({ five: { ...p.five!, a: { ...p.five!.a, savingsMonths: v }, src: { ...p.five!.src, savingsMonths: "you" } } }));
     }
+    // An answer about how money differs in one life goes straight into that life's slider, tagged "from you".
+    for (const mq of s.u?.questions ?? []) {
+      const pct = mq.money && s.answers[mq.id] ? answerPct(s.answers[mq.id]) : null;
+      if (pct == null || !mq.money) continue;
+      const { optionId, kind } = mq.money;
+      set((p) => ({ five: { ...p.five!, life: { ...(p.five!.life ?? {}), [optionId]: { ...(p.five!.life?.[optionId] ?? { pay: 0, cost: 0, src: "assumption" as Source }), [kind]: pct, src: "you" } } } }));
+    }
     go("five");
   }
   /** Computed facts handed to the model as they stand when the user taps "Live both weeks". */
@@ -566,6 +586,17 @@ export default function Futurial() {
       <>
         <p className="h">Before I imagine your two weeks</p>
         <p className="sub">{qs.length === 0 ? "One quick question." : `${qs.length + 1} quick questions.`} Tap an answer, or skip.</p>
+        {s.u.options.length > 2 && (
+          // Only two lives are lived side by side: the two picked go first in the options.
+          <div className="card">
+            <span className="t">Which two lives do you want to live?</span>
+            <span className="fine">You named {s.u.options.length}. Futurial puts two side by side.</span>
+            <div className="chips">{[...s.u.options].sort((x, y) => x.id.localeCompare(y.id)).map((o) => <button key={o.id} aria-pressed={dayOpts.some((d) => d.id === o.id)} onClick={() => set((p) => {
+              const opts = p.u!.options; if (opts.slice(0, 2).some((d) => d.id === o.id)) return {};
+              return { u: { ...p.u!, options: [opts[1], o, ...opts.filter((x) => x.id !== o.id && x.id !== opts[1].id)] } };
+            })}>{o.label}</button>)}</div>
+          </div>
+        )}
         <div className="card">
           <span className="t">{FOR_Q}</span>
           <span className="fine">So the people who matter show up in your weeks.</span>
