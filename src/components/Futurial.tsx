@@ -152,6 +152,7 @@ const profileLine = (p: Profile | null) => (p ? [p.place, p.age, p.household.joi
 
 async function api<T>(path: string, body: unknown): Promise<T & { demo?: boolean; reason?: string; handoff?: string }> {
   const res = await fetch(`/api/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (res.status === 503) throw new Error("The models are busy right now. Nothing was lost: tap the button again in a few seconds.");
   if (!res.ok) throw new Error(`Something went wrong (${res.status}). Please try again.`);
   return res.json();
 }
@@ -493,11 +494,11 @@ export default function Futurial() {
           <li key={sl.time + i} style={{ animationDelay: `${i * 0.35}s` }}><span className="when">{sl.time}</span><span>{sl.contrast}</span></li>
         ))}
       </ol>
-      <p className="fine"><span className="spinner sm" aria-hidden="true" /> Writing both lives and drawing each moment…</p>
+      <p className="fine"><span className="spinner sm" aria-hidden="true" /> Muse Wonder is writing both lives. This takes about 30 seconds.</p>
     </div>
   );
 
-  else if (s.busy) body = <Loading title={s.busy} sub={s.busy.startsWith("Reading your") ? "Muse Spark is finding what your decision depends on." : undefined} />;
+  else if (s.busy) body = <Loading title={s.busy} sub={s.busy.startsWith("Reading your") ? "Muse Spark is finding what your decision depends on. About 15 seconds." : s.busy.startsWith("Writing the same week") ? "Muse Spark is planning the week first. About 30 seconds in all." : undefined} />;
 
   else if (s.screen === "crisis") body = (
     <>
@@ -669,9 +670,9 @@ export default function Futurial() {
             <p className="h2">Every life has a hard part. Which one could you live with?</p>
             <p className="fine">Not which life is better. Which cost you could carry for five years.</p>
             <div className="hard">
-              {dayOpts.map((o) => <button key={o.id} aria-pressed={s.hard === o.id} onClick={() => s.hard !== o.id && pickHard(o.id)}><b>{o.id}&apos;s hard part</b>{s.standing[o.id]?.hard || s.standing[o.id]?.gaveUp || o.label}</button>)}
+              {dayOpts.map((o) => <button key={o.id} aria-pressed={s.hard === o.id} onClick={() => (s.hard !== o.id || s.error) && pickHard(o.id)}><b>{o.id}&apos;s hard part</b>{s.standing[o.id]?.hard || s.standing[o.id]?.gaveUp || o.label}</button>)}
             </div>
-            {pick && !r && !s.error && <p className="fine"><span className="spinner sm" aria-hidden="true" /> Reading what your answer says…</p>}
+            {pick && !r && !s.error && <p className="fine"><span className="spinner sm" aria-hidden="true" /> Muse Wonder is reading what your answer says. About 15 seconds.</p>}
             {s.error && <p className="err">{s.error}</p>}
             {pick && r && (
               <div className="clear">

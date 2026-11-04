@@ -27,6 +27,9 @@ export class MetaError extends Error {
 const CACHE_ON = (process.env.FUTURIAL_CACHE ?? (process.env.NODE_ENV === "production" ? "0" : "1")) === "1";
 const CACHE_DIR = join(process.cwd(), ".cache", "meta");
 
+const RETRY_WAIT_MS = [2000, 5000];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function post(path: string, body: unknown, timeoutMs: number) {
   const key = createHash("sha256").update(path + JSON.stringify(body)).digest("hex").slice(0, 32);
   const file = join(CACHE_DIR, `${key}.json`);
@@ -34,12 +37,24 @@ async function post(path: string, body: unknown, timeoutMs: number) {
     try { return JSON.parse(await readFile(file, "utf8")); } catch { /* not cached yet */ }
   }
   const t = Date.now();
-  const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  // Overload and rate-limit answers (429, 5xx) and dropped connections are usually gone in seconds: wait and try again, twice.
+  let res: Response | null = null;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(`${BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (e) {
+      if ((e as Error).name === "TimeoutError" || attempt >= RETRY_WAIT_MS.length) throw e;
+      await sleep(RETRY_WAIT_MS[attempt]);
+      continue;
+    }
+    if (res.ok || !(res.status === 429 || res.status >= 500) || attempt >= RETRY_WAIT_MS.length) break;
+    await sleep(RETRY_WAIT_MS[attempt]);
+  }
   if (!res.ok) throw new MetaError(res.status, `${path} ${res.status}: ${(await res.text()).slice(0, 400)}`);
   const data = await res.json();
   if (CACHE_ON) {

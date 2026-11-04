@@ -8,6 +8,8 @@ const post = async (path, body, tries = 2) => {
   const t = Date.now();
   const r = await fetch(`${BASE}/api/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const text = await r.text();
+  // A 503 means the models stayed busy even after the server's own retries: wait and try once more, then stop with the reason.
+  if (r.status === 503) { if (tries > 1) { await new Promise((z) => setTimeout(z, 8000)); return post(path, body, tries - 1); } throw new Error(`${path}: ${text.slice(0, 200)}`); }
   try { return { ...JSON.parse(text), ms: Date.now() - t }; }
   catch (e) { if (tries > 1) { await new Promise((z) => setTimeout(z, 3000)); return post(path, body, tries - 1); } throw e; }
 };

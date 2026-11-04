@@ -19,14 +19,15 @@ export async function ask<T>(model: string, prompt: string, schema: z.ZodType<T>
 
 export class CrisisError extends Error {}
 
-/** Run a live handler; on missing key or any failure, answer with demo data and say so. */
+/** Run a live handler. Without a key (or in mock mode) answer with labeled demo data. With a key, a failure is reported as an
+ *  error the user can retry: never someone else's sample decision in place of theirs. */
 export async function liveOrDemo<T>(live: () => Promise<T>, demo: () => T) {
   if (!hasKey()) return NextResponse.json({ ...demo(), demo: true, reason: "No MODEL_API_KEY set" });
   try {
     return NextResponse.json({ ...(await live()), demo: false });
   } catch (e) {
     if (e instanceof CrisisError) return NextResponse.json({ handoff: "crisis" });
-    console.error("[futurial] live call failed, using demo data:", e);
-    return NextResponse.json({ ...demo(), demo: true, reason: (e as Error).message.slice(0, 200) });
+    console.error("[futurial] live call failed:", e);
+    return NextResponse.json({ error: "busy", reason: (e as Error).message.slice(0, 200) }, { status: 503 });
   }
 }
